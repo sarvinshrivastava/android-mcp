@@ -1,0 +1,6 @@
+node_modules/
+*.log
+.DS_Store
+# screenshots are written to the OS temp dir, never the repo, but ignore any local strays
+*.png
+!docs/**/*.png
