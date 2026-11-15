@@ -13,6 +13,8 @@
  */
 
 import { shell, getScreenSize } from "./adb.js";
+import { getDisplaySize } from "./screenshot.js";
+import { swipeGeometry, DEFAULT_DISTANCE, type Direction } from "./swipe.js";
 import {
   snapshot,
   matchElement,
@@ -119,6 +121,73 @@ export async function waitFor(
     await Bun.sleep(intervalMs);
   }
   throw new ElementNotFound(sel, last!);
+}
+
+export interface SwipeResult {
+  direction: Direction;
+  region: {
+    kind: "display" | "element";
+    label?: string;
+    bounds: [number, number, number, number];
+  };
+  display: { width: number; height: number };
+  from: { x: number; y: number };
+  to: { x: number; y: number };
+  durationMs: number;
+}
+
+/**
+ * Swipe in a direction (the way the finger moves), over the whole display or inside the
+ * element a selector matches. Geometry lives in swipe.ts; this resolves the region, sends the
+ * gesture, and waits for the page to settle. The display size comes from a screen capture, so
+ * no UI dump is needed unless a selector is given.
+ */
+export async function swipe(
+  direction: Direction,
+  sel?: Selector,
+  distance = DEFAULT_DISTANCE,
+  durationMs?: number,
+): Promise<SwipeResult> {
+  const display = await getDisplaySize();
+  let region: SwipeResult["region"] = {
+    kind: "display",
+    bounds: [0, 0, display.width, display.height],
+  };
+
+  if (sel && (sel.text || sel.id || sel.desc)) {
+    const res = await resolve(sel);
+    if (!res.node) {
+      if (res.sparse) {
+        throw new Error(
+          "No accessibility tree on this screen (likely a Flutter/canvas app), so a selector " +
+            "cannot be matched. Omit the selector for a whole-display swipe.",
+        );
+      }
+      throw new ElementNotFound(sel, res);
+    }
+    region = { kind: "element", label: res.node.label, bounds: res.node.bounds };
+  }
+
+  const [left, top, right, bottom] = region.bounds;
+  const plan = swipeGeometry(
+    { left, top, right, bottom },
+    display,
+    direction,
+    distance,
+    durationMs,
+  );
+  await shell(
+    `input swipe ${plan.from.x} ${plan.from.y} ${plan.to.x} ${plan.to.y} ${plan.durationMs}`,
+  );
+  await Bun.sleep(350);
+  return {
+    direction,
+    region,
+    display,
+    from: plan.from,
+    to: plan.to,
+    durationMs: plan.durationMs,
+  };
 }
 
 /**

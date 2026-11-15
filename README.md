@@ -22,6 +22,7 @@ A tool only earns a place here if it does something a raw `adb` one-liner
 | Criterion       | Example                                                          |
 | --------------- | ---------------------------------------------------------------- |
 | **Compose**     | `tap` = dump tree → match element → tap its center               |
+|                 | `swipe` = display size + element bounds → start/end points       |
 | **Loop / state**| `full_page_screenshot`, `scroll_until`, `wait_for`               |
 | **Condense**    | `inspect_screen` turns 50 KB of XML into a short element list     |
 | **Semantic**    | `tap({text:"Login"})` instead of `tap(540, 1230)`                |
@@ -139,6 +140,16 @@ not the *Pocket money* contact. Labels are also cleaned of TalkBack noise
 - **`type_into`** — focus an input and type (optional `clearFirst`).
 - **`wait_for`** — poll until an element appears (post-navigation/loading).
 - **`scroll_until`** — scroll down until a target element is visible.
+- **`swipe`** — swipe `left | right | up | down` over the whole display, or inside
+  the element matching `{text|id|desc}` (pass a pager's own id/desc). The direction is the
+  way the **finger** moves: `left` advances a left-to-right pager, and `up` scrolls a list's
+  content down (the opposite word to `scroll_until`, which names the content direction).
+  Optional `distance` (0.1–0.8 of the region's extent, default 0.6) and `durationMs`.
+  The display size comes from a screen capture, so it is correct in landscape and needs no UI
+  dump. It reports the region and points used, not whether anything moved: check with
+  `screenshot` or `current_activity`. A gesture sent while the app is still mid-transition
+  (for example just after a page or orientation change) can be dropped by the app; verify, and
+  repeat once if it did not move.
 - **`tap_xy`** — low-level pixel tap; escape hatch for `sparse` canvas screens.
 
 ### Device & test utilities

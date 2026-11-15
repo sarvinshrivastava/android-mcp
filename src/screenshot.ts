@@ -33,6 +33,22 @@ export async function pngSize(
   return { width: m.width ?? 0, height: m.height ?? 0 };
 }
 
+/**
+ * The display size in the CURRENT orientation, read from a screen capture's dimensions.
+ *
+ * `getScreenSize` (via `wm size`) is the physical portrait size and ignores rotation, so
+ * anything swiping in landscape would compute off-screen points. A capture is always the
+ * real current size, works on every Android version, and needs no UI dump, so it also works
+ * on animating screens and canvas/game apps. Costs one screencap.
+ */
+export async function getDisplaySize(): Promise<{ width: number; height: number }> {
+  const size = await pngSize(await captureViewport());
+  if (!size.width || !size.height) {
+    throw new Error("Could not read the display size from a screen capture.");
+  }
+  return size;
+}
+
 /** Swipe up to scroll the content downward by roughly `fraction` of the height. */
 async function scrollDown(fraction: number): Promise<void> {
   const { width, height } = await getScreenSize();

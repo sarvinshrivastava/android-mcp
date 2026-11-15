@@ -30,8 +30,14 @@ import {
   typeInto,
   waitFor,
   scrollUntil,
+  swipe,
   resolve,
 } from "./actions.js";
+import {
+  DEFAULT_DISTANCE,
+  MIN_DURATION_MS,
+  MAX_DURATION_MS,
+} from "./swipe.js";
 import { currentActivity, readLogcat, resetApp } from "./device.js";
 
 const OUTPUT_DIR =
@@ -273,6 +279,48 @@ server.tool(
   },
   async ({ maxSwipes, ...sel }) => {
     const r = await scrollUntil(sel, maxSwipes ?? 15);
+    return text(r);
+  },
+);
+
+server.tool(
+  "swipe",
+  "Swipe in a direction. `direction` is the way the FINGER moves: `left` goes right-to-left (it advances a left-to-right pager, such as a Compass/Level page pager), `right` goes left-to-right (back), `up` goes bottom-to-top (it scrolls a list's content down, revealing later items), `down` the reverse. It is physical and never mirrored by an RTL layout; note it is the opposite word to `scroll_until`, which names the content direction. With no selector the swipe is over the whole display, which works even on animating screens and canvas/game apps. With a selector it happens inside the matched element's bounds (pass the container's own id/desc for a pager; the element must be one `inspect_screen` lists). Works in landscape. The result reports the region actually used and the points sent; it confirms the gesture was sent, not that anything moved, so check with `screenshot` or `current_activity`.",
+  {
+    direction: z
+      .enum(["left", "right", "up", "down"])
+      .describe("Direction the finger moves"),
+    text: z.string().min(1).optional().describe("Swipe inside the element with this visible text / label"),
+    id: z
+      .string()
+      .min(1)
+      .optional()
+      .describe("Swipe inside the element with this resource-id (suffix match)"),
+    desc: z
+      .string()
+      .min(1)
+      .optional()
+      .describe("Swipe inside the element with this content-desc"),
+    exact: selectorShape.exact,
+    distance: z
+      .number()
+      .min(0.1)
+      .max(0.8)
+      .optional()
+      .describe(
+        `Fraction of the region's extent along the swipe axis (default ${DEFAULT_DISTANCE}); 0.8 is the longest that stays clear of the system gesture margins`,
+      ),
+    durationMs: z
+      .number()
+      .min(MIN_DURATION_MS)
+      .max(MAX_DURATION_MS)
+      .optional()
+      .describe(
+        "Gesture time in ms. Default scales with distance to stay below fling speed; a short time over a long distance is a fling",
+      ),
+  },
+  async ({ direction, distance, durationMs, ...sel }) => {
+    const r = await swipe(direction, sel, distance, durationMs);
     return text(r);
   },
 );

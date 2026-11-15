@@ -93,7 +93,8 @@ points, so the caller says `swipe({ direction: "left" })` and never does coordin
 1. `src/swipe.ts`: pure `swipeGeometry(region, display, direction, distance, durationMs?)`
    returning `{ from, to, durationMs }` or throwing for an empty region or a zero-length swipe;
    no imports, so it can be unit-tested.
-2. `src/adb.ts`: `getDisplaySize()` (screen capture, `pngSize`), used by `swipe` only.
+2. `src/screenshot.ts`: `getDisplaySize()` (screen capture, `pngSize`), used by `swipe` only (it
+   lives there because `adb.ts` cannot import `screenshot.ts` without a cycle).
 3. `src/actions.ts`: `swipe(direction, sel?, distance?, durationMs?)`: display size, optional
    element region via `resolve`, `swipeGeometry`, `input swipe x1 y1 x2 y2 ms`, 350 ms settle.
 4. `src/index.ts`: register `swipe` next to `scroll_until` (zod: direction enum, non-empty
