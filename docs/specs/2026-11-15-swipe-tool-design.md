@@ -41,8 +41,10 @@ points, so the caller says `swipe({ direction: "left" })` and never does coordin
 - **Region:** the matched element's bounds intersected with the display, or the whole display.
   If the intersection has no area, fail with "element is off-screen".
 - **Start and end:** symmetric about the region's centre along the swipe axis, cross axis at the
-  centre. Every point is then clamped to the inner 80% box of the display (10% in from each
-  edge), which keeps clear of the system back gesture, the home bar and the notification shade.
+  centre. Every point is then clamped to the region intersected with the inner 80% box of the
+  display (10% in from each edge), so it never leaves the element and stays clear of the system
+  back gesture, the home bar and the notification shade. A region that lies wholly inside the
+  margin fails with a clear error instead of swiping.
 - **Minimum travel:** at least `min(120 px, 0.9 x extent)`. When the travel is under 200 px the
   duration is capped at 400 ms so it cannot turn into a long-press.
 - All four coordinates are rounded to integers, and a swipe whose rounded start equals its end
@@ -50,7 +52,8 @@ points, so the caller says `swipe({ direction: "left" })` and never does coordin
 
 ## Errors
 - Selector matches nothing: the same `ElementNotFound` text as `tap`. On a sparse tree the
-  message also says "omit the selector for a whole-screen swipe".
+  message also says to omit the selector for a whole-display swipe.
+- `exact` without `text`, `id` or `desc` is rejected, not silently treated as a whole-display swipe.
 - adb failures surface as the tool error, as for every other tool.
 
 ## Out of scope (and noted for follow-up)

@@ -96,9 +96,20 @@ export function swipeGeometry(
     right: display.width * (1 - EDGE_INSET),
     bottom: display.height * (1 - EDGE_INSET),
   };
+  // Points are kept inside the region AND clear of the gesture margins, so a swipe scoped to
+  // an element never starts or ends outside that element. For the whole display this is just
+  // the inner box.
+  const box = intersect(r, inner);
+  if (box.right - box.left <= 0 || box.bottom - box.top <= 0) {
+    throw new Error(
+      "The region lies inside the display's system-gesture margin (the outer " +
+        `${EDGE_INSET * 100}% of each edge), where a swipe would trigger back, home or the ` +
+        "notification shade instead. Scroll it toward the middle of the screen first.",
+    );
+  }
   const fit = (p: Point): Point => ({
-    x: Math.round(clamp(p.x, inner.left, inner.right)),
-    y: Math.round(clamp(p.y, inner.top, inner.bottom)),
+    x: Math.round(clamp(p.x, box.left, box.right)),
+    y: Math.round(clamp(p.y, box.top, box.bottom)),
   });
   const from = fit(raw.from);
   const to = fit(raw.to);

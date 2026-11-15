@@ -154,16 +154,16 @@ export async function swipe(
     bounds: [0, 0, display.width, display.height],
   };
 
+  if (sel && sel.exact && !(sel.text || sel.id || sel.desc)) {
+    throw new Error("`exact` only applies together with text, id or desc.");
+  }
   if (sel && (sel.text || sel.id || sel.desc)) {
     const res = await resolve(sel);
     if (!res.node) {
-      if (res.sparse) {
-        throw new Error(
-          "No accessibility tree on this screen (likely a Flutter/canvas app), so a selector " +
-            "cannot be matched. Omit the selector for a whole-display swipe.",
-        );
-      }
-      throw new ElementNotFound(sel, res);
+      const err = new ElementNotFound(sel, res);
+      // Same text as `tap`, plus the way out that only a swipe has: skip the selector.
+      if (res.sparse) err.message += " Or omit the selector for a whole-display swipe.";
+      throw err;
     }
     region = { kind: "element", label: res.node.label, bounds: res.node.bounds };
   }

@@ -52,11 +52,36 @@ describe("geometry", () => {
     expect(p.to.x).toBe(108);
   });
 
-  test("a region that reaches the display edge is pulled inside the margin", () => {
+  test("a region that reaches the display edge is pulled inside the margin and stays inside the region", () => {
     const edge: Rect = { left: 0, top: 1000, right: 400, bottom: 1400 };
     const p = swipeGeometry(edge, PORTRAIT, "right", 0.8);
-    expect(p.from.x).toBeGreaterThanOrEqual(108);
-    expect(p.to.x).toBeLessThanOrEqual(972);
+    // raw points would be x=40 -> 360; 40 is inside the 10% margin (108), so it is pulled in
+    expect(p.from).toEqual({ x: 108, y: 1200 });
+    expect(p.to).toEqual({ x: 360, y: 1200 });
+    for (const q of [p.from, p.to]) {
+      expect(q.x).toBeGreaterThanOrEqual(edge.left);
+      expect(q.x).toBeLessThanOrEqual(edge.right);
+      expect(q.y).toBeGreaterThanOrEqual(edge.top);
+      expect(q.y).toBeLessThanOrEqual(edge.bottom);
+    }
+  });
+
+  test("an element scoped swipe never leaves the element", () => {
+    const el: Rect = { left: 150, top: 300, right: 330, bottom: 500 };
+    for (const d of ["left", "right", "up", "down"] as const) {
+      const p = swipeGeometry(el, PORTRAIT, d, 0.8);
+      for (const q of [p.from, p.to]) {
+        expect(q.x).toBeGreaterThanOrEqual(el.left);
+        expect(q.x).toBeLessThanOrEqual(el.right);
+        expect(q.y).toBeGreaterThanOrEqual(el.top);
+        expect(q.y).toBeLessThanOrEqual(el.bottom);
+      }
+    }
+  });
+
+  test("an element wholly inside the gesture margin fails clearly", () => {
+    const sliver: Rect = { left: 0, top: 1000, right: 105, bottom: 1400 };
+    expect(() => swipeGeometry(sliver, PORTRAIT, "right")).toThrow(/margin/);
   });
 
   test("an element partly off the display is intersected with it", () => {
@@ -100,9 +125,11 @@ describe("geometry", () => {
 describe("tiny regions", () => {
   const tiny: Rect = { left: 520, top: 1180, right: 560, bottom: 1220 };
 
-  test("travel is at least 0.9 of a tiny extent, and the swipe is not a tap", () => {
+  test("travel on a tiny extent is 0.9 of it, centred, and not a tap", () => {
     const p = swipeGeometry(tiny, PORTRAIT, "left");
-    expect(p.from.x - p.to.x).toBeGreaterThan(30);
+    // extent 40 -> travel max(min(120, 36), 0.6*40) = 36, centred on x=540
+    expect(p.from).toEqual({ x: 558, y: 1200 });
+    expect(p.to).toEqual({ x: 522, y: 1200 });
   });
 
   test("a short travel caps the duration so it cannot become a long-press", () => {
@@ -110,9 +137,14 @@ describe("tiny regions", () => {
     expect(p.durationMs).toBe(400);
   });
 
-  test("a sliver pinned to the display edge has no length after fitting and throws", () => {
+  test("a region a fraction of a pixel wide has no length after rounding and throws", () => {
+    const hair: Rect = { left: 108, top: 1000, right: 108.4, bottom: 1400 };
+    expect(() => swipeGeometry(hair, PORTRAIT, "left")).toThrow(/no length/);
+  });
+
+  test("a sliver pinned to the display edge is rejected as inside the margin", () => {
     const sliver: Rect = { left: 0, top: 1000, right: 1, bottom: 1400 };
-    expect(() => swipeGeometry(sliver, PORTRAIT, "left")).toThrow(/no length/);
+    expect(() => swipeGeometry(sliver, PORTRAIT, "left")).toThrow(/margin/);
   });
 });
 
